@@ -1,0 +1,21 @@
+DELETE /notes
+PUT /notes/_doc/1
+{
+  "title": "Elasticsearch",
+  "content": "About Elasticsearch",
+  "grade": 4.9
+}
+
+PUT /notes/_doc/2
+{
+  "title": "Hadoop",
+  "content": "About Hadoop",
+  "grade": 4.5
+}
+
+PUT /notes/_doc/3
+{
+  "title": "Canal",
+  "content": "About Canal",
+  "grade": 4.7
+}
