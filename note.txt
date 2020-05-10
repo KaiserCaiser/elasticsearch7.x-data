@@ -3,7 +3,7 @@ PUT /notes/_doc/1
 {
   "title": "Elasticsearch",
   "content": "About Elasticsearch",
-  "grade": 4.9
+  "grade": 100
 }
 
 PUT /notes/_doc/2
