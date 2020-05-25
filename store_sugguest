@@ -1,0 +1,167 @@
+PUT /store_suggest
+{
+  "mappings": {
+    "properties": {
+      "name": {
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart"
+      }
+    }
+  }
+}
+
+
+PUT /_bulk
+{"index": {"_index": "store_suggest"}}
+{"name": "意美家居饰品"}
+{"index": {"_index": "store_suggest"}}
+{"name": "季品特产店"}
+{"index": {"_index": "store_suggest"}}
+{"name": "逸居饰品生活馆"}
+{"index": {"_index": "store_suggest"}}
+{"name": "雕刻人生"}
+{"index": {"_index": "store_suggest"}}
+{"name": "安美装饰画铺"}
+{"index": {"_index": "store_suggest"}}
+{"name": "鑫艺坊"}
+{"index": {"_index": "store_suggest"}}
+{"name": "艺聚堂"}
+{"index": {"_index": "store_suggest"}}
+{"name": "三生石工艺坊批发店"}
+
+
+DELETE my_articles
+
+POST my_articles/_bulk
+{"index": {}}
+{"body": "lucene is very cool"}
+{"index": {}}
+{"body": "Elasticsearch builds on top of lucene"}
+{"index": {}}
+{"body": "Elasticsearch rocks"}
+{"index": {}}
+{"body": "elastic is the company behind ELK stack"}
+{"index": {}}
+{"body": "ELK stack rocks"}
+{"index": {}}
+{"body": "elasticsearch is rock solid"}
+
+
+GET /my_articles/_search
+{
+  "suggest": {
+    "phrase-suggestion": {
+      "text": "lucne and elasticsear rock",
+      "phrase": {
+        "field": "body",
+        "max_errors": 2,
+        "confidence": 0,
+        "direct_generator": [{
+          "field": "body",
+          "suggest_mode": "missing"
+        }],
+        "highlight": {
+          "pre_tag": "<em>",
+          "post_tag": "</em>"
+        }
+      }
+    }
+  }
+}
+
+
+######################################################################
+####################   Completion Suggester    #######################
+######################################################################
+
+DELETE store_suggest_v2
+PUT /store_suggest_v2
+{
+  "mappings": {
+    "properties": {
+      "name": {
+      "type": "text",
+      "analyzer": "ik_max_word"
+    },
+    "name_suggest": {
+      "type": "completion",
+      "analyzer": "ik_max_word",
+      "search_analyzer": "ik_smart"
+    }
+    }
+  }
+}
+
+
+PUT /store_suggest_v2/_bulk
+{"index": {}}
+{"name": "意美家居饰品", "name_suggest": "意美家居饰品"}
+{"index": {}}
+{"name": "季品特产店", "name_suggest": "季品特产店"}
+{"index": {}}
+{"name": "逸居饰品生活馆", "name_suggest": "逸居饰品生活馆"}
+{"index": {}}
+{"name": "雕刻人生", "name_suggest": "雕刻人生"}
+{"index": {}}
+{"name": "安美装饰画铺", "name_suggest": "安美装饰画铺"}
+{"index": {}}
+{"name": "鑫艺坊", "name_suggest": "鑫艺坊"}
+{"index": {}}
+{"name": "艺聚堂", "name_suggest": "艺聚堂"}
+{"index": {}}
+{"name": "三生石工艺坊批发店", "name_suggest": "三生石工艺坊批发店"}
+
+
+######################################################################
+####################   Context Suggester    ##########################
+######################################################################
+
+DELETE store_suggest_v3
+
+PUT /store_suggest_v3
+{
+  "mappings": {
+    "properties": {
+      "name": {
+      "type": "text",
+      "analyzer": "ik_max_word"
+      },
+      "name_suggest": {
+        "type": "completion",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart",
+        "contexts": [{
+          "type": "category",
+          "name": "scene"
+        }]
+      }
+    }
+  }
+}
+
+GET /store_suggest_v3/_search
+
+
+# "inputs":["意"], 
+PUT /store_suggest_v3/_bulk
+{"index": {}}
+{"name": "意美家居饰品", "name_suggest": {"input": ["意美家居饰品"], "contexts": {"scene": "ornament"}}}
+{"index": {}}
+{"name": "意美家居家具", "name_suggest": {"input": ["意美家居家具"], "contexts": {"scene": "furniture"}}}
+
+
+GET /store_suggest_v3/_search
+{
+  "suggest": {
+    "name_suggest": {
+      "prefix": "意美",
+      "completion": {
+        "field": "name_suggest",
+        "contexts": {
+          "scene": "ornament"
+        }
+      }
+    }
+  }
+}
