@@ -1,0 +1,335 @@
+
+DELETE /aggs_order
+
+PUT /aggs_order
+{
+  "mappings": {
+    "properties": {
+      "platform": {
+        "type": "keyword"
+      },
+      "amount": {
+        "type": "long"
+      },
+      "originatorId": {
+        "type": "text"
+      },
+      "originatorName": {
+        "type": "keyword"
+      },
+      "goodsId": {
+        "type": "keyword"
+      },
+      "goodsName": {
+        "type": "text"
+      },
+      "createTime": {
+        "type": "date",
+        "format": "yyyy-MM-dd HH:mm"
+      }
+    }
+  }
+}
+
+PUT /aggs_order/_mapping
+{
+  "properties": {
+    "goodsName": {
+      "type": "text",
+      "fielddata": true,
+      "fields": {
+        "keyword": {
+          "type": "keyword"
+        }
+      }
+    }
+  }
+}
+
+GET /aggs_order/_mapping
+
+
+PUT /aggs_order/_bulk
+{"index": { "_id": "HASA-XSIAN-SIWU" }}
+{"platform":"Android", "amount": 100, "createTime": "2019-05-20 10:00", "originatorId": 1, "originatorName": "张三", "goodsId": 1, "goodsName": "IPhone 8 Plus"}
+{"index": { "_id": "HAOY-SKXIS-LIWN" }}
+{"platform":"IOS", "amount": 1200, "createTime": "2020-04-15 10:00", "originatorId": 2, "originatorName": "李四", "goodsId": 1, "goodsName": "IPhone 8 Plus"}
+{"index": { "_id": "GUSI-SNSIA-LLIUS" }}
+{"platform":"IOS", "amount": 300, "createTime": "2020-01-20 10:00", "originatorId": 3, "originatorName": "王五", "goodsId": 2, "goodsName": "IPhone 9 Plus"}
+{"index": { "_id": "USYX_SJJSUL_XUSYA" }}
+{"platform":"PC", "amount": 500, "createTime": "2020-01-20 10:00", "originatorId": 1, "originatorName": "张三", "goodsId": 2, "goodsName": "IPhone 9 Plus"}
+{"index": { "_id": "XXSA-KSUWL-USIA" }}
+{"platform":"PC", "createTime": "2020-01-20 10:00", "originatorId": 3, "originatorName": "王五", "goodsId": 3, "goodsName": "IPhone 10 Plus"}
+
+
+# 地理位置聚合
+PUT /aggs_hotel
+{
+  "mappings": {
+    "properties": {
+      "name": {
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart", 
+        "fields": {
+          "keyword": {
+            "type": "keyword"
+          }
+        }
+      },
+      "location": {
+        "type": "geo_point"
+      }
+    }
+  }
+}
+
+PUT /aggs_hotel/_bulk
+{"index": {}}
+{"name": "徽风快捷酒店", "location": { "lon": 108.9210240, "lat": 34.2349320}}
+{"index": {}}
+{"name": "泽兰雅家酒店", "location": { "lon": 117.1293640, "lat": 36.6854730}}
+{"index": {}}
+{"name": "布依主题酒店", "location": { "lon": 117.3194830, "lat": 31.8823320}}
+{"index": {}}
+{"name": "泉韵连锁酒店", "location": { "lon": 109.1978110, "lat": 34.3722120}}
+{"index": {}}
+{"name": "优喜达公寓酒店", "location": { "lon": 109.2133110, "lat": 34.3759650}}
+{"index": {}}
+{"name": "通城商务酒店", "location": { "lon": 109.2227080, "lat": 34.3843560}}
+{"index": {}}
+{"name": "贵臻商务酒店", "location": { "lon": 109.1904930, "lat": 34.3711140}}
+{"index": {}}
+{"name": "云朵商务酒店", "location": { "lon": 109.2173520, "lat": 34.3743440}}
+
+
+PUT /aggs_hotel_price/_bulk
+{"index": {}}
+{"name": "徽风快捷酒店", "prices": [{"level": "001", "price": 10, "selldate": "2020-05-01"},{"level": "002", "price": 9, "selldate": "2020-05-01"},{"level": "003", "price": 8, "selldate": "2020-05-01"}, {"level": "001", "price": 12, "selldate": "2020-05-02"},{"level": "002", "price": 11, "selldate": "2020-05-02"},{"level": "003", "price": 10, "selldate": "2020-05-02"}]}
+{"index": {}}
+{"name": "泽兰雅家酒店", "prices": [{"level": "001", "price": 15, "selldate": "2020-05-01"},{"level": "002", "price": 14, "selldate": "2020-05-01"},{"level": "003", "price": 13, "selldate": "2020-05-01"}, {"level": "001", "price": 9, "selldate": "2020-05-02"},{"level": "002", "price": 8, "selldate": "2020-05-02"},{"level": "003", "price": 7, "selldate": "2020-05-02"}]}
+
+GET /aggs_hotel_price/_search
+{
+  "size": 0,
+  "aggs": {
+    "group_by_name": {
+      "filter": {
+        "term": {
+          "name.keyword": "泽兰雅家酒店"
+        }
+      },
+      "aggs": {
+        "prices": {
+          "nested": {
+            "path": "prices"
+          },
+          "aggs": {
+            "group_by_level": {
+              "terms": {
+                "field": "prices.level",
+                "size": 1,
+                "include": "001"
+              },
+              "aggs": {
+                "date_range": {
+                  "date_range": {
+                    "field": "prices.selldate",
+                    "ranges": [
+                      {
+                        "from": "2020-05-01",
+                        "to": "2020-05-03"
+                      }
+                    ]
+                  },
+                  "aggs": {
+                    "stats": {
+                      "stats": {
+                        "field": "prices.price"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+
+DELETE /aggs_user_envelope
+# 用户红包
+PUT aggs_user_envelope
+{
+  "mappings": {
+    "properties": {
+      "userId": {
+        "type": "keyword"
+      },
+      "userName": {
+        "type": "keyword"
+      },
+      "envelope": {
+        "type": "nested",
+        "properties": {
+          "id": {
+            "type": "long"
+          },
+          "money": {
+            "type": "long"
+          },
+          "until": {
+            "type": "date",
+            "format": "yyyy-MM-dd HH:mm"
+          },
+          "userId": {
+            "type": "keyword"
+          }
+        }
+      }
+    }
+  }
+}
+
+
+
+PUT /aggs_user_envelope/_bulk
+{"index": {}}
+{"userId": "10086", "userName": "孙瑞锴", "envelope": [{"id": 1, "money": 30, "until": "2020-05-30 20:00", "userId": "10086"}, {"id": 2, "money": 10, "until": "2020-05-31 20:00", "userId": "10086"}, {"id": 3, "money": 10, "until": "2020-06-01 20:00", "userId": "10086"}]}
+{"index": {}}
+{"userId": "10010", "userName": "哈利路亚", "envelope": [{"id": 11, "money": 30, "until": "2020-04-30 20:00", "userId": "10010"}, {"id": 12, "money": 10, "until": "2020-05-31 20:00", "userId": "10010"}, {"id": 13, "money": 10, "until": "2020-06-01 20:00", "userId": "10010"}]}
+{"index": {}}
+{"userId": "1314", "userName": "Ga", "envelope": [{"id": 21, "money": 50, "until": "2020-07-30 20:00", "userId": "1314"}]}
+
+PUT /aggs_user_envelope/_bulk
+{"index": {}}
+{"userId": "1315", "userName": "Ga1", "envelope": [{"id": 31, "money": 70, "until": "2020-07-30 20:00", "userId": "1315"}]}
+{"index": {}}
+{"userId": "1316", "userName": "Ga2", "envelope": [{"id": 41, "money": 70, "until": "2020-07-30 20:00", "userId": "1316"}]}
+
+
+GET /aggs_user_envelope/_search
+{
+  "size": 0,
+  "aggs": {
+    "aggs_nested": {
+      "nested": {
+        "path": "envelope"
+      },
+      "aggs": {
+        "filter_date": {
+          "filters": {
+            "filters": {
+              "range": {
+                "range": {
+                  "envelope.until": {
+                    "gte": "2020-05-30 00:00"
+                  }
+                }
+              }
+            }
+          },
+          "aggs": {
+            "group_by_username": {
+              "terms": {
+                "field": "envelope.userId",
+                "size": 10
+              },
+              "aggs": {
+                "sum_of_money": {
+                  "sum": {
+                    "field": "envelope.money"
+                  }
+                },
+                "filter_money": {
+                  "bucket_selector": {
+                    "buckets_path": {
+                      "money": "sum_of_money"
+                    },
+                    "script": "params.money >= 50"
+                  }
+                },
+                "sort": {
+                  "bucket_sort": {
+                    "sort": [
+                      {"sum_of_money": {"order": "desc"}}
+                      ,{"_count": {"order": "desc"}}
+                      ,{"_key": {"order": "desc"}}
+                      ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+GET /aggs_user_envelope/_search
+{
+  "size": 0,
+  "aggs": {
+    "nested_wrapper": {
+      "nested": {
+        "path": "envelope"
+      },
+      "aggs": {
+        "group_by_userName": {
+          "composite": {
+            "size": 1, 
+            "sources": [
+              {
+                "userName": {
+                  "terms": {
+                    "field": "envelope.userId",
+                    "missing_bucket": true
+                  }
+                }
+              }
+            ]
+          },
+          "aggs": {
+            "filter_date": {
+              "filter": {
+                "range": {
+                  "envelope.until": {
+                    "gte": "2020-05-30 00:00"
+                  }
+                }
+              },
+              "aggs": {
+                "sum_of_money": {
+                  "sum": {
+                    "field": "envelope.money"
+                  }
+                }
+              }
+            },
+            "filter_money": {
+              "bucket_selector": {
+                "buckets_path": {
+                  "money": "filter_date>sum_of_money"
+                },
+                "script": "params.money >= 50"
+              }
+            },
+            "sort": {
+              "bucket_sort": {
+                "sort": [
+                  {"filter_date>sum_of_money": {"order": "desc"}}
+                  ,{"_count": {"order": "desc"}}
+                  ,{"_key": {"order": "desc"}}
+                  ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
