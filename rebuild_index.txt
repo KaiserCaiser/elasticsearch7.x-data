@@ -1,0 +1,288 @@
+
+##########################################################
+#################   _update_by_query     #################
+##########################################################
+DELETE ubq_index
+# 建索引
+PUT /ubq_index/
+{
+  "mappings": {
+    "properties": {
+      "username": {
+        "type": "keyword"
+      },
+      "description": {
+        "type": "text",
+        "search_analyzer": "standard",
+        "analyzer": "standard"
+      }
+    }
+  }
+}
+
+# 加入一篇文档
+POST /ubq_index/_doc/1
+{
+  "username": "孙瑞锴",
+  "description": "一名喜欢程序的程序员"
+}
+
+# 修改mappings, 增加分词属性
+PUT /ubq_index/_mapping
+{
+  "properties": {
+    "description": {
+      "type": "text",
+      "fields": {
+        "ik": {
+          "type": "text",
+          "analyzer": "ik_max_word",
+          "search_analyzer": "ik_smart"
+        }
+      }
+    }
+  }
+}
+
+# 索引新文档
+POST /ubq_index/_doc/2
+{
+  "username": "Ga",
+  "description": "卖女孩的小火柴"
+}
+
+# 搜索新文档，是能出来结果的
+GET /ubq_index/_search
+{
+  "query": {
+    "match": {
+      "description.ik": "小火柴"
+    }
+  }
+}
+
+# 搜索老文档出不来结果
+GET /ubq_index/_search
+{
+  "query": {
+    "match": {
+      "description.ik": "程序员"
+    }
+  }
+}
+
+# 重新匹配的文档
+POST /ubq_index/_update_by_query
+{
+  "query": {
+    "term": {
+      "user": "孙瑞锴"
+    }
+  }
+}
+
+POST /ubq_index/_update_by_query?conflicts=proceed
+{
+  "query": {
+    "term": {
+      "username": "孙瑞锴"
+    }
+  },
+  "script": {
+    "source": """
+        Integer technology = ctx._source.technology; 
+        if(technology != null)
+        {
+          ctx._source.technology++;
+        } else 
+        {
+          ctx._source.technology = 1;
+        }
+    """,
+    "lang": "painless"
+  }
+}
+
+GET /ubq_index/_search
+
+
+
+##########################################################
+#####################   _reindex     #####################
+##########################################################
+
+DELETE ridx_hotel
+DELETE ridx_hotel_v1
+
+# 新建一个有关酒店的索引
+PUT /ridx_hotel
+{
+  "mappings": {
+    "properties": {
+      "name": {
+        "type":"text"
+      }
+    }
+  }
+}
+
+# 加入一个文档
+PUT /ridx_hotel/_doc/1
+{
+  "name": "瑜伽酒店"
+}
+
+# 我们尝试搜索”瑜伽“，发现没有文档，因为我们忘记指定中文分词器了，此时我们只能重建索引了
+GET ridx_hotel/_search
+{
+  "query": {
+    "term": {
+      "name": "瑜伽"
+    }
+  }
+}
+
+# 我们重建了一个新索引，里面指定name的分词器
+PUT /ridx_hotel_v1
+{
+  "mappings": {
+    "properties": {
+      "name": {
+        "type":"text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart",
+        "fields": {
+          "keyword": {
+            "type": "keyword"
+          }
+        }
+      }
+    }
+  }
+}
+
+# 执行reindex api将数据进行迁移
+# reindex
+POST _reindex
+{
+  "source": { "index": "ridx_hotel" },
+  "dest": { "index": "ridx_hotel_v1" }
+}
+
+# 在词查询”瑜伽“，可以被分词出来
+GET ridx_hotel_v1/_search
+{
+  "query": {
+    "term": {
+      "name": "瑜伽"
+    }
+  }
+}
+
+
+##########################################################
+##################   _reindex alias     ##################
+##########################################################
+
+DELETE ridx_hotel
+DELETE ridx_hotel_v1
+
+# 新建一个有关酒店的索引
+PUT /ridx_hotel
+{
+  "mappings": {
+    "properties": {
+      "name": {
+        "type":"text"
+      }
+    }
+  }
+}
+
+# 配置别名
+POST /_aliases
+{
+  "actions": [
+    {
+      "add": {
+        "index": "ridx_hotel",
+        "alias": "ridx_hotel_alias"
+      }
+    }
+  ]
+}
+
+# 查看别名
+GET /_alias
+
+# 加入一个文档
+PUT /ridx_hotel/_doc/1
+{
+  "name": "瑜伽酒店"
+}
+
+# 我们尝试通过别名，搜索”瑜伽“，发现没有文档，因为我们忘记指定中文分词器了，此时我们只能重建索引了
+GET ridx_hotel_alias/_search
+{
+  "query": {
+    "term": {
+      "name": "瑜伽"
+    }
+  }
+}
+
+# 我们重建了一个新索引，里面指定name的分词器
+PUT /ridx_hotel_v1
+{
+  "mappings": {
+    "properties": {
+      "name": {
+        "type":"text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart",
+        "fields": {
+          "keyword": {
+            "type": "keyword"
+          }
+        }
+      }
+    }
+  }
+}
+
+# 执行reindex api将数据进行迁移
+# reindex
+POST _reindex
+{
+  "source": { "index": "ridx_hotel" },
+  "dest": { "index": "ridx_hotel_v1" }
+}
+
+# 数据迁移完成后切换别名
+POST /_aliases
+{
+  "actions": [
+    {
+      "add": {
+        "index": "ridx_hotel_v1",
+        "alias": "ridx_hotel_alias"
+      }
+    },
+    {
+      "remove": {
+        "index": "ridx_hotel",
+        "alias": "ridx_hotel_alias"
+      }
+    }
+  ]
+}
+
+# 再次通过别名，查询”瑜伽“，可以被分词出来
+GET ridx_hotel_alias/_search
+{
+  "query": {
+    "term": {
+      "name": "瑜伽"
+    }
+  }
+}
